@@ -35,6 +35,7 @@ use FelixNagel\Pluploadfe\Exception\AuthenticationException;
 use FelixNagel\Pluploadfe\Exception\InvalidArgumentException;
 use FelixNagel\Pluploadfe\Utility\Filesystem;
 use FelixNagel\Pluploadfe\Utility\FileValidation;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 
 /**
  * This class uploads files.
@@ -237,17 +238,25 @@ class Upload
             throw new InvalidArgumentException('No config record ID given.');
         }
 
-        $select = 'upload_path, extensions, feuser_required, feuser_field, save_session, obscure_dir, check_mime';
         $table = 'tx_pluploadfe_config';
-        $where = 'uid = '.$configUid;
-        $where .= ' AND deleted = 0';
-        $where .= ' AND hidden = 0';
-        $where .= ' AND starttime <= '.$GLOBALS['SIM_ACCESS_TIME'];
-        $where .= ' AND ( endtime = 0 OR endtime > '.$GLOBALS['SIM_ACCESS_TIME'].')';
+        // $where .= ' AND starttime <= '.$GLOBALS['SIM_ACCESS_TIME'];
+        // $where .= ' AND ( endtime = 0 OR endtime > '.$GLOBALS['SIM_ACCESS_TIME'].')';
 
-        $config = $this->getDatabase()->exec_SELECTgetSingleRow($select, $table, $where);
-
-        return $config;
+        //$config = $this->getDatabase()->exec_SELECTgetSingleRow($select, $table, $where);
+        $qb = $this->getDatabase()->getQueryBuilderForTable($table);
+        $statement = $qb->select(
+            'upload_path',
+            'extensions',
+            'feuser_required',
+            'feuser_field',
+            'save_session',
+            'obscure_dir',
+            'check_mime')
+               ->from($table)
+               ->where(
+                   $qb->expr()->eq('uid', $qb->createNamedParameter($configUid, \PDO::PARAM_INT))
+               );
+        return $statement->execute()->fetch();
     }
 
     /**
@@ -453,10 +462,10 @@ class Upload
     /**
      * Get database connection.
      *
-     * @return \TYPO3\CMS\Core\Database\DatabaseConnection
+     * @return \TYPO3\CMS\Core\Database\ConnectionPool
      */
     protected function getDatabase()
     {
-        return $GLOBALS['TYPO3_DB'];
+        return GeneralUtility::makeInstance(ConnectionPool::class);
     }
 }

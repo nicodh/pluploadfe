@@ -26,10 +26,11 @@ namespace FelixNagel\Pluploadfe\Controller;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Fluid\View\StandaloneView;
 use TYPO3\CMS\Frontend\Plugin\AbstractPlugin;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
-
 /**
  * Plugin 'pluploadfe_pi1' for the 'pluploadfe' extension.
  */
@@ -68,7 +69,7 @@ class Pi1Controller extends AbstractPlugin
     /**
      * @var string
      */
-    protected $templateHtml;
+    protected $templateDir;
 
     /**
      * @var array
@@ -105,7 +106,9 @@ class Pi1Controller extends AbstractPlugin
         }
 
         $this->getUploadConfig();
-        $this->getTemplateFile();
+
+        $this->templateDir = (strlen(trim($this->conf['templateDir'])) > 0) ?
+                    trim($this->conf['templateDir']) : 'EXT:pluploadfe/Resources/Private/Templates/';
 
         if ($this->checkConfig()) {
             $this->renderCode();
@@ -125,10 +128,15 @@ class Pi1Controller extends AbstractPlugin
     {
         $select = 'extensions';
         $table = 'tx_pluploadfe_config';
-        $where = 'uid = '.$this->configUid;
-        $where .= $this->getTsFeController()->sys_page->enableFields($table);
 
-        $this->config = $this->getDatabase()->exec_SELECTgetSingleRow($select, $table, $where);
+        $qb = $this->getDatabase()->getQueryBuilderForTable($table);
+        $statement = $qb
+            ->select($select)
+           ->from($table)
+           ->where(
+               $qb->expr()->eq('uid', $qb->createNamedParameter($this->configUid, \PDO::PARAM_INT))
+           );
+        $this->config = $statement->execute()->fetch();
     }
 
     /**
@@ -141,7 +149,7 @@ class Pi1Controller extends AbstractPlugin
         $flag = false;
 
         if (strlen($this->uid) > 0 &&
-            strlen($this->templateHtml) > 0 &&
+            strlen($this->templateDir) > 0 &&
             intval($this->configUid) > 0 &&
             is_array($this->config) &&
             strlen($this->config['extensions']) > 0
@@ -159,17 +167,15 @@ class Pi1Controller extends AbstractPlugin
      */
     protected function renderCode()
     {
-        // Extract subparts from the template
-        $templateMain = $this->cObj->getSubpart($this->templateHtml, '###TEMPLATE_CODE###');
-
         // fill marker array
         $markerArray = $this->getDefaultMarker();
-        $markerArray['###UPLOAD_FILE###'] = GeneralUtility::getIndpEnv('TYPO3_SITE_URL').
+        $markerArray['UPLOAD_FILE'] = GeneralUtility::getIndpEnv('TYPO3_SITE_URL').
             'index.php?eID=pluploadfe&configUid='.$this->configUid;
-
-        // replace markers in the template
-        $content = $this->cObj->substituteMarkerArray($templateMain, $markerArray);
-
+        /* @var $standaloneView \TYPO3\CMS\Fluid\View\StandaloneView */
+        $standaloneView = GeneralUtility::makeInstance(StandaloneView::class);
+        $standaloneView->assignMultiple($markerArray);
+        $standaloneView->setTemplatePathAndFilename($this->templateDir . 'fluid_template.html');
+        $content = $standaloneView->render();
         $this->getPageRenderer()->addJsFooterInlineCode(
             $this->prefixId.'_'.$this->uid,
             $content
@@ -183,18 +189,14 @@ class Pi1Controller extends AbstractPlugin
      */
     protected function getHtml()
     {
-        // Extract subparts from the template
-        $templateMain = $this->cObj->getSubpart($this->templateHtml, '###TEMPLATE_CONTENT###');
-
         // fill marker array
         $markerArray = $this->getDefaultMarker();
-        $markerArray['###INFO_1###'] = $this->pi_getLL('info_1');
-        $markerArray['###INFO_2###'] = $this->pi_getLL('info_2');
-
-        // replace markers in the template
-        $content = $this->cObj->substituteMarkerArray($templateMain, $markerArray);
-
-        return $content;
+        $markerArray['INFO_1'] = $this->pi_getLL('info_1');
+        $markerArray['INFO_2'] = $this->pi_getLL('info_2');
+        $standaloneView = GeneralUtility::makeInstance(StandaloneView::class);
+        $standaloneView->assignMultiple($markerArray);
+        $standaloneView->setTemplatePathAndFilename($this->templateDir . 'fluid_content_template.html');
+        return $standaloneView->render();
     }
 
     /**
@@ -208,31 +210,16 @@ class Pi1Controller extends AbstractPlugin
         $extensionsArray = GeneralUtility::trimExplode(',', $this->config['extensions'], true);
         $maxFileSizeInBytes = GeneralUtility::getMaxUploadFileSize() * 1024;
 
-        $markerArray['###UID###'] = $this->uid;
-        $markerArray['###LANGUAGE###'] = $this->getTsFeController()->config['config']['language'];
-        $markerArray['###EXTDIR_PATH###'] = GeneralUtility::getIndpEnv('TYPO3_SITE_URL').
+        $markerArray['UID'] = $this->uid;
+        $markerArray['LANGUAGE'] = $this->getTsFeController()->config['config']['language'];
+        $markerArray['EXTDIR_PATH'] = GeneralUtility::getIndpEnv('TYPO3_SITE_URL').
             ExtensionManagementUtility::siteRelPath($this->extKey);
-        $markerArray['###FILE_EXTENSIONS###'] = implode(',', $extensionsArray);
-        $markerArray['###FILE_MAX_SIZE###'] = $maxFileSizeInBytes;
+        $markerArray['FILE_EXTENSIONS'] = implode(',', $extensionsArray);
+        $markerArray['FILE_MAX_SIZE'] = $maxFileSizeInBytes;
 
         return $markerArray;
     }
 
-    /**
-     * Function to fetch the template file.
-     */
-    protected function getTemplateFile()
-    {
-        $templateFile = (strlen(trim($this->conf['templateFile'])) > 0) ?
-            trim($this->conf['templateFile']) : 'EXT:pluploadfe/Resources/Private/Templates/template.html';
-
-        // Get the template
-        $this->templateHtml = file_get_contents($this->getTsFeController()->tmpl->getFileName($templateFile));
-
-        if (!$this->templateHtml) {
-            $this->handleError('Error while fetching the template file: '.$templateFile);
-        }
-    }
 
     /**
      * Get page renderer.
@@ -254,8 +241,6 @@ class Pi1Controller extends AbstractPlugin
      */
     protected function handleError($msg)
     {
-        // error
-        GeneralUtility::sysLog($msg, $this->extKey, 3);
 
         // write dev log if enabled
         if ($GLOBALS['TYPO3_CONF_VARS']['SYS']['enable_DLOG']) {
@@ -267,11 +252,11 @@ class Pi1Controller extends AbstractPlugin
     /**
      * Get database connection.
      *
-     * @return \TYPO3\CMS\Core\Database\DatabaseConnection
+     * @return ConnectionPool
      */
     protected function getDatabase()
     {
-        return $GLOBALS['TYPO3_DB'];
+        return GeneralUtility::makeInstance(ConnectionPool::class);
     }
 
     /**

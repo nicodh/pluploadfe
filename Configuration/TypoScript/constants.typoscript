@@ -1,0 +1,8 @@
+plugin.tx_pluploadfe_pi1 {
+
+	# Template file
+	templateFile = EXT:pluploadfe/Resources/Private/Templates/template.html
+
+	templateDir =  EXT:pluploadfe/Resources/Private/Templates/
+
+}

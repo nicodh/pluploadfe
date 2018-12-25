@@ -1,0 +1,54 @@
+
+(function($) {
+	var uploaderId = '#uploader_{UID}',
+		url = '{UPLOAD_FILE->f:format.raw()}',
+		extensions = '{FILE_EXTENSIONS}',
+		maxFileSize = '{FILE_MAX_SIZE}',
+		basePath = '{EXTDIR_PATH}';
+
+	$(function() {
+		var errorMsg = "Error: test", json,
+			uploader = $(uploaderId).pluploadQueue({
+				// General settings
+				runtimes : 'html5,flash,silverlight,html4',
+				url : url,
+				// chunk_size : '###FILE_MAX_SIZE###',
+				unique_names : false,
+				rename: true,
+				dragdrop: true,
+				multiple_queues: true,
+				quality: 100,
+
+				// Specify what files to browse for
+				filters : {
+					// Remove this when using chunked uploads
+					max_file_size : maxFileSize,
+					mime_types: [
+						{
+							title : 'Allowed files',
+							extensions :extensions
+						}
+					]
+				},
+
+				// Flash settings
+				flash_swf_url : basePath + 'Resources/Public/JavaScript/plupload/js/Moxie.swf',
+
+				// Silverlight settings
+				silverlight_xap_url : basePath + 'Resources/Public/JavaScript/plupload/js/Moxie.xap',
+
+				// Post init events, bound after the internal events
+				init : {
+					FileUploaded: function(up, file, info) {
+						json = $.parseJSON(info.response);
+						if (json.error) {
+							file.status = plupload.FAILED;
+							errorMsg += json.error.message;
+							alert(errorMsg);
+						}
+					}
+				}
+			});
+	});
+})(jQuery);
+

@@ -21,12 +21,12 @@
 	],
 	"license": "GPL-2.0+",
 	"require": {
-		"php": ">=5.6,<7.3",
+		"php": ">=7.2",
 		"ext-json": "*",
-		"typo3/cms-core": ">=7.6.11,<=8.7.99"
+		"typo3/minimal": ">=8.7.0,<=9.5.99"
 	},
 	"suggest": {
-		"felixnagel/mailfiles": "Simple message form with file upload",
+		"typo3-ter/mailfiles": "Simple message form with file upload",
 		"ext-fileinfo": "*"
 	},
 	"autoload": {

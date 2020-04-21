@@ -89,7 +89,6 @@ class Pi1Controller extends AbstractPlugin
         $this->conf = $conf;
         $this->pi_setPiVarDefaults();
         $this->pi_loadLL('EXT:pluploadfe/Resources/Private/Language/locallang.xml');
-
         // set (localized) UID
         $localizedUid = $this->cObj->data['_LOCALIZED_UID'];
         if (strlen($this->conf['uid']) > 0) {
@@ -106,10 +105,8 @@ class Pi1Controller extends AbstractPlugin
         }
 
         $this->getUploadConfig();
-
-        $this->templateDir = (strlen(trim($this->conf['templateDir'])) > 0) ?
-                    trim($this->conf['templateDir']) : 'EXT:pluploadfe/Resources/Private/Templates/';
-
+        $this->templateDir = (strlen(trim($this->conf['settings.']['templateDir'])) > 0) ?
+                    trim($this->conf['settings.']['templateDir']) : 'EXT:pluploadfe/Resources/Private/Templates/';
         if ($this->checkConfig()) {
             $this->renderCode();
             $content = $this->getHtml();
@@ -170,14 +167,13 @@ class Pi1Controller extends AbstractPlugin
         // fill marker array
         $markerArray = $this->getDefaultMarker();
         $markerArray['UPLOAD_FILE'] = GeneralUtility::getIndpEnv('TYPO3_SITE_URL').
-            'index.php?eID=pluploadfe&configUid='.$this->configUid;
+            'index.php?eID=pluploadfe&configUid=' . $this->configUid;
         /* @var $standaloneView \TYPO3\CMS\Fluid\View\StandaloneView */
         $standaloneView = GeneralUtility::makeInstance(StandaloneView::class);
         $standaloneView->assignMultiple($markerArray);
-        $standaloneView->setTemplatePathAndFilename($this->templateDir . 'fluid_template.html');
+        $standaloneView->setTemplatePathAndFilename($this->templateDir . 'fluid_code_template.html');
         $content = $standaloneView->render();
-        $this->getPageRenderer()->addJsFooterInlineCode(
-            $this->prefixId.'_'.$this->uid,
+        $this->getPageRenderer()->addFooterData(
             $content
         );
     }
@@ -193,6 +189,7 @@ class Pi1Controller extends AbstractPlugin
         $markerArray = $this->getDefaultMarker();
         $markerArray['INFO_1'] = $this->pi_getLL('info_1');
         $markerArray['INFO_2'] = $this->pi_getLL('info_2');
+        $markerArray['CONFIG_UID'] = $this->configUid;
         $standaloneView = GeneralUtility::makeInstance(StandaloneView::class);
         $standaloneView->assignMultiple($markerArray);
         $standaloneView->setTemplatePathAndFilename($this->templateDir . 'fluid_content_template.html');
@@ -212,8 +209,7 @@ class Pi1Controller extends AbstractPlugin
 
         $markerArray['UID'] = $this->uid;
         $markerArray['LANGUAGE'] = $this->getTsFeController()->config['config']['language'];
-        $markerArray['EXTDIR_PATH'] = GeneralUtility::getIndpEnv('TYPO3_SITE_URL').
-            ExtensionManagementUtility::siteRelPath($this->extKey);
+        $markerArray['EXTDIR_PATH'] = GeneralUtility::getIndpEnv('TYPO3_SITE_URL'). ExtensionManagementUtility::siteRelPath($this->extKey);
         $markerArray['FILE_EXTENSIONS'] = implode(',', $extensionsArray);
         $markerArray['FILE_MAX_SIZE'] = $maxFileSizeInBytes;
 
